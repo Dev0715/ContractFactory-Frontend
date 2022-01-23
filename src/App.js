@@ -3,12 +3,13 @@ import { ethers } from 'ethers';
 import './App.css';
 import contract from './contracts/contract.json';
 
-const contractAddress = "0xa511C70C76Eb23d2586fa061c99E8D6CdcC700c3";
+const contractAddress = "0xbdfff5988cb3c84b296b640ce32b537947e248b9";
 const abi = contract.abi;
 
 function App() {
   const [currentAccount, setCurrentAccount] = useState(null);
-  const [currentContract, setCurrentContract] = useState(null);
+  const [currentSupply, setCurrentSupply] = useState('-->');
+  const [mintAmount, setMintAmount] = useState(1);
 
   const checkWalletIsConnected = async () => {
     const { ethereum } = window;
@@ -25,6 +26,7 @@ function App() {
       const account = accounts[0];
       console.log("Found an authorized account:", account);
       setCurrentAccount(account);
+      getTotalSupply();
     } else {
       console.log("No authorized account found!");
     }
@@ -47,43 +49,33 @@ function App() {
     }
   }
 
-  const createContract = async () => {
+  const mintNftHandler = async () => {
     try {
       const { ethereum } = window;
 
       if (ethereum) {
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
-        const factoryContract = new ethers.Contract(contractAddress, abi, signer);
+        const nftContract = new ethers.Contract(contractAddress, abi, signer);
+
+        if(mintAmount < 1 || mintAmount > 20) {
+          console.log("mintAmount should be 1 to 20");
+          return;
+        }
+
+        const etherAmount = 0.055 * mintAmount + 0.01;
+        console.log(etherAmount, etherAmount.toString());
 
         console.log("Initialize payment");
-        let nftTxn = await factoryContract.createContract("Mintdropz", "MD", ethers.utils.parseEther("0.03"), 10);
-        // params: name, symbol, tokenPrice, royaltyPercent
+        let nftTxn = await nftContract.mintNFT(mintAmount, {
+          value: ethers.utils.parseEther(etherAmount.toString())
+        });
 
         console.log("Mining... please wait");
         await nftTxn.wait();
 
         console.log(`Mined, transaction hash: ${nftTxn.hash}`);
-      } else {
-        console.log("Ethereum object does not exit");
-      }
-    } catch (err) {
-      console.log(err);
-    }
-  }
-
-  const getContractAddress = async () => {
-    try {
-      const { ethereum } = window;
-
-      if (ethereum) {
-        const provider = new ethers.providers.Web3Provider(ethereum);
-        const signer = provider.getSigner();
-        const factoryContract = new ethers.Contract(contractAddress, abi, signer);
-
-        console.log("Initialize payment");
-        let nftTxn = await factoryContract.getMyContract();
-        setCurrentContract(nftTxn);
+        getTotalSupply();
       } else {
         console.log("Ethereum object does not exit");
       }
@@ -100,19 +92,47 @@ function App() {
     )
   }
 
-  const createContractButton = () => {
+  const mintNftButton = () => {
     return (
-      <button onClick={createContract} className='btn btn-mint-nft'>
-        Create Factory
+      <button onClick={mintNftHandler} className='btn btn-mint-nft'>
+        Mint NFT
       </button>
     )
   }
 
-  const getContractAddresButton = () => {
+  const getTotalSupply = async () => {
+    try {
+      const { ethereum } = window;
+
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const apesContract = new ethers.Contract(contractAddress, abi, signer);
+
+        console.log("Initialize payment");
+        let nftTxn = await apesContract.totalSupplyByType(0);
+        setCurrentSupply(nftTxn.toString());
+      } else {
+        console.log("Ethereum object does not exit");
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  const getTotalSupplyButton = () => {
     return (
-      <button onClick={getContractAddress} className='btn btn-mint-nft'>
-        Get My Contract address
+      <button onClick={getTotalSupply} className='btn btn-mint-nft'>
+        Get total supply
       </button>
+    )
+  }
+
+  const setMintAmountInput = () => {
+    return (
+      <input value={mintAmount}
+        onChange={event => setMintAmount(event.target.value)}
+        className='input-amount' />
     )
   }
 
@@ -126,16 +146,17 @@ function App() {
         Wallet Address: {currentAccount ? currentAccount : "No Wallet Connected"}
       </div>
       <div className="div-wallet-button">
-        {currentAccount ? createContractButton() : connectWalletButton()}
+        {currentAccount ? mintNftButton() : connectWalletButton()}
+        {currentAccount && setMintAmountInput()}
       </div>
       {currentAccount &&
         <div className="div-wallet-button">
-          {getContractAddresButton()}
+          {getTotalSupplyButton()}
         </div>
       }
-      {currentContract &&
+      {currentSupply &&
         <div className="div-wallet-address">
-          Contract Address: {currentContract}
+          Contract Total Supply: {currentSupply}
         </div>
       }
     </div>

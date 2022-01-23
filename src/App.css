@@ -25,3 +25,8 @@
 .btn-mint-nft {
   color: brown;
 }
+
+.input-amount {
+  margin-left: 32px;
+  padding: 12px;
+}
